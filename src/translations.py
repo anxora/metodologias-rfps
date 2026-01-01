@@ -1,72 +1,71 @@
 """
-Configuraciones de idioma y traducciones
+Configuración de idiomas y traducciones
 """
 
 LANGUAGES = {
     'es': {
-        'code': 'es',
         'name': 'Español',
+        'prompt_language': 'español',
         'sections': {
-            'title': 'Enfoque Metodológico',
+            'title': 'SECCIÓN D: DESCRIPCIÓN DEL ENFOQUE, METODOLOGÍA Y PLAN DE TRABAJO',
             'context': 'Comprensión del Contexto',
-            'approach': 'Enfoque Metodológico',
+            'principles': 'Nuestros Principios Rectores',
+            'approach': 'Enfoque Técnico y Metodología',
             'workplan': 'Plan de Trabajo',
             'team': 'Organización del Equipo',
             'risks': 'Gestión de Riesgos',
             'quality': 'Aseguramiento de Calidad',
         },
-        'prompt_language': 'español'
+        'principles_intro': 'Los siguientes principios clave sustentan nuestra estrategia propuesta, y surgen de nuestro análisis del contexto local así como de las necesidades específicas expresadas en los TdR.',
     },
     'en': {
-        'code': 'en',
         'name': 'English',
+        'prompt_language': 'English',
         'sections': {
-            'title': 'Methodological Approach',
-            'context': 'Context Understanding',
-            'approach': 'Methodological Approach',
+            'title': 'SECTION D: DESCRIPTION OF APPROACH, METHODOLOGY AND WORK PLAN',
+            'context': 'Understanding of the Context',
+            'principles': 'Our Guiding Principles',
+            'approach': 'Technical Approach and Methodology',
             'workplan': 'Work Plan',
             'team': 'Team Organization',
             'risks': 'Risk Management',
             'quality': 'Quality Assurance',
         },
-        'prompt_language': 'English'
+        'principles_intro': 'The following key principles underpin our proposed strategy, and stem from our analysis of the local context as well as the specific needs expressed in the ToR.',
     },
     'fr': {
-        'code': 'fr',
         'name': 'Français',
+        'prompt_language': 'français',
         'sections': {
-            'title': 'Approche Méthodologique',
+            'title': 'SECTION D: DESCRIPTION DE L\'APPROCHE, MÉTHODOLOGIE ET PLAN DE TRAVAIL',
             'context': 'Compréhension du Contexte',
-            'approach': 'Approche Méthodologique',
+            'principles': 'Nos Principes Directeurs',
+            'approach': 'Approche Technique et Méthodologie',
             'workplan': 'Plan de Travail',
             'team': 'Organisation de l\'Équipe',
             'risks': 'Gestion des Risques',
             'quality': 'Assurance Qualité',
         },
-        'prompt_language': 'français'
+        'principles_intro': 'Les principes clés suivants sous-tendent notre stratégie proposée et découlent de notre analyse du contexte local ainsi que des besoins spécifiques exprimés dans les TdR.',
     },
     'pt': {
-        'code': 'pt',
         'name': 'Português',
+        'prompt_language': 'português',
         'sections': {
-            'title': 'Abordagem Metodológica',
+            'title': 'SEÇÃO D: DESCRIÇÃO DA ABORDAGEM, METODOLOGIA E PLANO DE TRABALHO',
             'context': 'Compreensão do Contexto',
-            'approach': 'Abordagem Metodológica',
+            'principles': 'Nossos Princípios Orientadores',
+            'approach': 'Abordagem Técnica e Metodologia',
             'workplan': 'Plano de Trabalho',
             'team': 'Organização da Equipe',
             'risks': 'Gestão de Riscos',
             'quality': 'Garantia de Qualidade',
         },
-        'prompt_language': 'português'
+        'principles_intro': 'Os seguintes princípios-chave sustentam nossa estratégia proposta e decorrem de nossa análise do contexto local, bem como das necessidades específicas expressas nos TdR.',
     }
 }
 
 
-def get_language_config(code: str) -> dict:
-    """Obtiene la configuración de idioma"""
-    return LANGUAGES.get(code, LANGUAGES['es'])
-
-
-def get_available_languages() -> list:
-    """Retorna lista de idiomas disponibles"""
-    return [(code, lang['name']) for code, lang in LANGUAGES.items()]
+def get_language_config(lang_code: str) -> dict:
+    """Retorna la configuración para el idioma especificado"""
+    return LANGUAGES.get(lang_code, LANGUAGES['es'])
