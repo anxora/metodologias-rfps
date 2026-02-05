@@ -117,8 +117,8 @@ def generate_methodology(tdr_content: str, lang_config: dict, methodology_type: 
         "messages": [
             {"role": "user", "content": prompt}
         ],
-        "max_tokens": 16000,
-        "temperature": 0.7
+        "max_tokens": 32000,
+        "temperature": 0.5
     }
 
     response = requests.post(url, json=payload, headers=headers, timeout=300)
@@ -128,127 +128,158 @@ def generate_methodology(tdr_content: str, lang_config: dict, methodology_type: 
     response_text = result['choices'][0]['message']['content']
 
     # Extraer JSON de la respuesta
-    try:
-        start = response_text.find('{')
-        end = response_text.rfind('}') + 1
-        json_str = response_text[start:end]
-        methodology = json.loads(json_str)
-    except (json.JSONDecodeError, ValueError):
-        methodology = _create_fallback_structure(response_text)
+    methodology = _parse_json_response(response_text)
 
     return methodology
+
+
+def _parse_json_response(response_text: str) -> dict:
+    """
+    Parsea la respuesta de Perplexity, manejando bloques markdown y JSON malformado
+    """
+    import re
+
+    # Remover bloques de código markdown ```json ... ```
+    json_block_match = re.search(r'```(?:json)?\s*([\s\S]*?)\s*```', response_text)
+    if json_block_match:
+        json_str = json_block_match.group(1).strip()
+    else:
+        # Buscar JSON directo entre { y }
+        start = response_text.find('{')
+        end = response_text.rfind('}') + 1
+        if start >= 0 and end > start:
+            json_str = response_text[start:end]
+        else:
+            return _create_fallback_structure(response_text)
+
+    # Intentar parsear el JSON
+    try:
+        methodology = json.loads(json_str)
+
+        # Validar estructura mínima
+        if not isinstance(methodology, dict):
+            return _create_fallback_structure(response_text)
+
+        # Asegurar que las claves principales existan
+        if 'phases' not in methodology or not methodology['phases']:
+            methodology['phases'] = []
+        if 'principles' not in methodology or not methodology['principles']:
+            methodology['principles'] = []
+
+        return methodology
+
+    except json.JSONDecodeError as e:
+        # Intentar reparar JSON truncado
+        try:
+            # Agregar llaves/corchetes faltantes
+            repaired = _repair_truncated_json(json_str)
+            methodology = json.loads(repaired)
+            return methodology
+        except:
+            pass
+
+        return _create_fallback_structure(response_text)
+
+
+def _repair_truncated_json(json_str: str) -> str:
+    """Intenta reparar JSON truncado agregando caracteres de cierre faltantes"""
+    # Contar llaves y corchetes abiertos
+    open_braces = json_str.count('{') - json_str.count('}')
+    open_brackets = json_str.count('[') - json_str.count(']')
+
+    # Agregar comillas faltantes si hay string sin cerrar
+    if json_str.rstrip().endswith('"') is False:
+        # Buscar última comilla
+        last_quote = json_str.rfind('"')
+        if last_quote > 0:
+            before_quote = json_str[:last_quote].rfind('"')
+            if before_quote >= 0:
+                # Hay un string abierto, cerrarlo
+                json_str = json_str.rstrip()
+                if not json_str.endswith('"'):
+                    json_str += '"'
+
+    # Cerrar corchetes y llaves
+    json_str += ']' * open_brackets
+    json_str += '}' * open_braces
+
+    return json_str
 
 
 def _build_prompt(tdr_content: str, template: dict, sections: dict, language: str, methodology_type: str) -> str:
     """Construye el prompt específico para el tipo de metodología"""
 
     phases_list = '\n'.join([f"   - {phase}" for phase in template['phases']])
+    num_phases = len(template['phases'])
 
-    prompt = f"""You are an expert consultant writing a methodology proposal. Analyze the following Terms of Reference (ToR) and generate a COMPLETE and DETAILED methodology approach for a development consulting proposal.
+    prompt = f"""You are a senior development consultant. Based on the Terms of Reference below, generate a methodology proposal in JSON format.
 
-METHODOLOGY TYPE: {methodology_type.upper()} - {template['description']}
+INSTRUCTIONS:
+1. Read the ToR carefully and extract: objectives, deliverables, timeline, stakeholders, and location
+2. Generate content in {language}
+3. Adapt ALL content specifically to this ToR
+4. Return ONLY valid JSON (no markdown, no explanation)
 
-CRITICAL REQUIREMENTS:
-- Generate ALL content in {language}.
-- The final document MUST have 15-25 pages (approximately 6,000-8,000 words MINIMUM).
-- Each section must be EXTENSIVE, DETAILED and professional with MULTIPLE PARAGRAPHS.
-- Follow EXACTLY the phase structure indicated below.
-- ADAPT all content specifically to this ToR - mention specific deliverables, stakeholders, and objectives from the ToR.
-- For the Nigeria iDICE project: include NFI upgrade details, PPP Film Studios (Lagos + 100 mini-studios), AfDB compliance, etc.
+ToR CONTENT:
+{tdr_content[:12000]}
 
-ToR:
-{tdr_content}
-
-=== REQUIRED STRUCTURE ===
-
-Generate a JSON with this EXACT structure. EACH field must be VERY DETAILED:
+REQUIRED JSON STRUCTURE:
 
 {{
-    "introduction": "Introductory paragraph of 150-200 words explaining the overall approach specifically for this ToR",
+    "introduction": "150-200 word introduction explaining your approach to this specific project",
 
-    "context": "Understanding of Context (1000+ words MINIMUM): detailed analysis of geographic context (Nigeria, Lagos, Jos), institutional framework (BOI, PCU, NFI, NFC, Ministry), sectoral analysis (Nollywood, creative industries), problem statement, key actors and stakeholders, specific objectives from ToR, and regulatory/normative framework (AfDB guidelines, Nigerian PPP laws)",
+    "context": "800-1000 word analysis including: project background, geographic context, institutional framework, stakeholders, problem statement, and objectives from the ToR",
 
     "principles": [
-        {{
-            "name": "Short principle name 1",
-            "description": "Description of 80-100 words explaining the principle and how it applies to this specific project"
-        }},
-        {{
-            "name": "Short principle name 2",
-            "description": "Description of 80-100 words"
-        }},
-        {{
-            "name": "Short principle name 3",
-            "description": "Description of 80-100 words"
-        }},
-        {{
-            "name": "Short principle name 4",
-            "description": "Description of 80-100 words"
-        }},
-        {{
-            "name": "Short principle name 5",
-            "description": "Description of 80-100 words"
-        }},
-        {{
-            "name": "Short principle name 6",
-            "description": "Description of 80-100 words"
-        }}
+        {{"name": "Principle 1 name", "description": "80-100 word description relevant to this project"}},
+        {{"name": "Principle 2 name", "description": "80-100 word description"}},
+        {{"name": "Principle 3 name", "description": "80-100 word description"}},
+        {{"name": "Principle 4 name", "description": "80-100 word description"}},
+        {{"name": "Principle 5 name", "description": "80-100 word description"}},
+        {{"name": "Principle 6 name", "description": "80-100 word description"}}
     ],
 
     "phases": [
-{_build_phases_structure(template['phases'], methodology_type)}
+        {{
+            "title": "{template['phases'][0]}",
+            "description": "200-300 word phase description",
+            "start_week": 1,
+            "end_week": 4,
+            "tasks": [
+                {{
+                    "code": "1A",
+                    "title": "Task title from ToR",
+                    "description": "200-300 word task description with methodology and tools",
+                    "items": ["Activity 1", "Activity 2", "Activity 3", "Activity 4", "Activity 5"],
+                    "start_week": 1,
+                    "end_week": 2,
+                    "deliverable_week": 2
+                }},
+                {{
+                    "code": "1B",
+                    "title": "Second task title",
+                    "description": "200-300 word description",
+                    "items": ["Activity 1", "Activity 2", "Activity 3", "Activity 4"],
+                    "start_week": 2,
+                    "end_week": 4
+                }}
+            ],
+            "deliverables": [{{"code": "D1", "name": "Deliverable name from ToR"}}]
+        }}
     ],
 
-    "risks": "Risk Management (800+ words MINIMUM): identification of risks by category (political, technical, financial, regulatory, environmental/social, procurement), probability and impact analysis, specific mitigation measures for each risk, contingency plan, risk allocation in PPP structure",
+    "risks": "600-800 word risk management section covering: risk categories, mitigation measures, and contingency plans",
 
-    "quality": "Quality Assurance (600+ words MINIMUM): quality management system, specific KPIs and indicators, monitoring mechanisms, evaluation framework, reporting protocols, compliance verification processes"
+    "quality": "400-600 word quality assurance section with KPIs, monitoring mechanisms, and reporting protocols"
 }}
 
-=== PHASE INSTRUCTIONS ===
-
-The phases MUST follow this EXACT structure:
+PHASES TO INCLUDE (generate ALL {num_phases} phases with 3-5 tasks each):
 {phases_list}
 
-For EACH phase, include:
-- title: Exact phase title
-- description: General description of 200-300 words (DETAILED, not generic)
-- start_week: Start week number (use WEEKS not months, project is 46 weeks / 11 months)
-- end_week: End week number
-- tasks: List of 4-6 tasks with:
-  - code: Task code (e.g., "1A", "1B", "2A")
-  - title: Task title specific to this ToR
-  - description: DETAILED description of 250-350 words explaining methodology, tools, stakeholders involved
-  - items: List of 5-7 specific activities or deliverables
-  - start_week: Start week
-  - end_week: End week
-  - deliverable_week: Week of deliverable (if applicable)
-- deliverables: List of phase deliverables with code and name (MUST match ToR deliverables)
+Extract deliverables and milestones from the ToR and assign them to the appropriate phases.
 
-SPECIFIC DELIVERABLES FROM THIS ToR (use these exact names):
-A. Nigeria Film Institute:
-- D1: Validation and Stakeholder Engagement Report (Week 6)
-- D2: Comprehensive and Costed Action Plan (Week 8)
-- D3: Design and Procurement Support Package (Week 12)
+RETURN ONLY THE JSON OBJECT, NO OTHER TEXT."""
 
-B. PPP Film Studios:
-- D4: Inception Report (Week 4)
-- D5: Draft Study Report (Week 12)
-- D6: Final Study and Investment Vehicle Structuring Report (Week 16)
-- D7: Procurement Documentation and Technical Support (Week 44)
-- D8: Close-out and Final Closure Report (Week 46)
-
-{_get_type_specific_instructions(methodology_type)}
-
-CRITICAL REMINDERS:
-- Content MUST be professional and SPECIFIC to this Nigeria iDICE/NFI/PPP Studios project
-- Use COMPLETE, DEVELOPED paragraphs (not bullet points for descriptions)
-- Tasks must have consecutive codes (1A, 1B, 1C for Phase 1; 2A, 2B for Phase 2, etc.)
-- Use WEEKS (1-46) consistent with the 11-month project duration
-- MINIMUM 6,000 words total - each phase description and task must be VERY detailed
-- Include **bold markers** around key terms that should be emphasized
-- Reference specific stakeholders: BOI, PCU, NFI, NFC, Federal Ministry of Arts Culture and Creative Economy, AfDB
-- Reference specific outputs: feasibility study, financial models, BOQs, RFPs, PPP agreements
-"""
     return prompt
 
 

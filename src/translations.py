@@ -17,6 +17,16 @@ LANGUAGES = {
             'quality': 'Aseguramiento de Calidad',
         },
         'principles_intro': 'Los siguientes principios clave sustentan nuestra estrategia propuesta, y surgen de nuestro análisis del contexto local así como de las necesidades específicas expresadas en los TdR.',
+        'table_labels': {
+            'activities': 'Actividades',
+            'timeline': 'Cronograma',
+            'weeks': 'Semanas',
+            'months': 'Meses',
+            'legend': 'Ev: Evento, P: Producto',
+            'principle': 'Principio',
+            'event_prefix': 'Ev',
+            'deliverable_prefix': 'P',
+        },
     },
     'en': {
         'name': 'English',
@@ -32,6 +42,16 @@ LANGUAGES = {
             'quality': 'Quality Assurance',
         },
         'principles_intro': 'The following key principles underpin our proposed strategy, and stem from our analysis of the local context as well as the specific needs expressed in the ToR.',
+        'table_labels': {
+            'activities': 'Activities',
+            'timeline': 'Timeline',
+            'weeks': 'Weeks',
+            'months': 'Months',
+            'legend': 'E: Event, P: Product',
+            'principle': 'Principle',
+            'event_prefix': 'E',
+            'deliverable_prefix': 'P',
+        },
     },
     'fr': {
         'name': 'Français',
@@ -47,6 +67,16 @@ LANGUAGES = {
             'quality': 'Assurance Qualité',
         },
         'principles_intro': 'Les principes clés suivants sous-tendent notre stratégie proposée et découlent de notre analyse du contexte local ainsi que des besoins spécifiques exprimés dans les TdR.',
+        'table_labels': {
+            'activities': 'Activités',
+            'timeline': 'Calendrier',
+            'weeks': 'Semaines',
+            'months': 'Mois',
+            'legend': 'Ev: Événement, L: Livrable',
+            'principle': 'Principe',
+            'event_prefix': 'Ev',
+            'deliverable_prefix': 'L',
+        },
     },
     'pt': {
         'name': 'Português',
@@ -62,6 +92,16 @@ LANGUAGES = {
             'quality': 'Garantia de Qualidade',
         },
         'principles_intro': 'Os seguintes princípios-chave sustentam nossa estratégia proposta e decorrem de nossa análise do contexto local, bem como das necessidades específicas expressas nos TdR.',
+        'table_labels': {
+            'activities': 'Atividades',
+            'timeline': 'Cronograma',
+            'weeks': 'Semanas',
+            'months': 'Meses',
+            'legend': 'Ev: Evento, E: Entregável',
+            'principle': 'Princípio',
+            'event_prefix': 'Ev',
+            'deliverable_prefix': 'E',
+        },
     }
 }
 

@@ -60,7 +60,7 @@ def create_word_document(methodology: dict, output_path: str, lang_config: dict)
         intro_text = lang_config.get('principles_intro',
             'The following key principles underpin our proposed strategy, and stem from our analysis of the local context as well as the specific needs expressed in the ToR.')
         _add_paragraph(doc, intro_text)
-        _add_principles_table(doc, methodology['principles'])
+        _add_principles_table(doc, methodology['principles'], lang_config)
 
     # Enfoque técnico y metodología
     doc.add_paragraph(sections['approach'], style='Aninver Title 1')
@@ -79,6 +79,11 @@ def create_word_document(methodology: dict, output_path: str, lang_config: dict)
     if methodology.get('quality'):
         doc.add_paragraph(sections['quality'], style='Aninver Title 1')
         _add_content_block(doc, methodology['quality'])
+
+    # Work Plan consolidado al final
+    if methodology.get('phases'):
+        doc.add_paragraph(sections.get('workplan', 'Work Plan'), style='Aninver Title 1')
+        _add_work_plan(doc, methodology, lang_config)
 
     # Guardar documento
     doc.save(output_path)
@@ -343,13 +348,13 @@ def _remove_table_borders(table):
         tbl.insert(0, tblPr)
 
 
-def _add_principles_table(doc: Document, principles: list):
+def _add_principles_table(doc: Document, principles: list, lang_config: dict = None):
     """
     Agrega una tabla de principios con 5 columnas:
     - Columnas 0, 2, 4: Contenido (5.2 cm cada una)
     - Columnas 1, 3: Separadores de 1 cm
     - Sin bordes
-    - Fila 0: Headers "Principle 1/2/3" en azul claro (BDD6EE)
+    - Fila 0: Headers "Principle 1/2/3" en azul claro (BDD6EE) - traducido según idioma
     - Fila 1: Nombres de principios 1-3 en azul oscuro (2E74B5), texto blanco
     - Fila 2: Descripciones 1-3
     - Fila 3: Nombres de principios 4-6 en azul oscuro (sin header)
@@ -357,6 +362,10 @@ def _add_principles_table(doc: Document, principles: list):
     """
     if not principles:
         return
+
+    # Obtener etiqueta traducida para "Principle"
+    labels = lang_config.get('table_labels', {}) if lang_config else {}
+    principle_label = labels.get('principle', 'Principle')
 
     num_principles = len(principles)
 
@@ -390,7 +399,7 @@ def _add_principles_table(doc: Document, principles: list):
     row0 = table.rows[0]
     for i, col_idx in enumerate(content_cols[:min(num_principles, 3)]):
         cell = row0.cells[col_idx]
-        cell.text = f"Principle {i + 1}"
+        cell.text = f"{principle_label} {i + 1}"
         _set_cell_shading(cell, COLORS['principle_header'])
         for para in cell.paragraphs:
             for run in para.runs:
@@ -477,10 +486,10 @@ def _add_phase_improved(doc: Document, phase: dict, lang_config: dict):
     tasks = phase.get('tasks', [])
     if tasks:
         # 1. Tabla de Activities/Timeline (vertical)
-        _add_activities_timeline_table_improved(doc, tasks, phase)
+        _add_activities_timeline_table_improved(doc, tasks, phase, lang_config)
 
         # 2. Tabla Gantt con semanas/meses
-        _add_gantt_table_improved(doc, tasks, phase)
+        _add_gantt_table_improved(doc, tasks, phase, lang_config)
 
         # 3. Detalle de cada tarea
         for task in tasks:
@@ -506,15 +515,20 @@ def _add_phase_improved(doc: Document, phase: dict, lang_config: dict):
     doc.add_paragraph()
 
 
-def _add_activities_timeline_table_improved(doc: Document, tasks: list, phase: dict):
+def _add_activities_timeline_table_improved(doc: Document, tasks: list, phase: dict, lang_config: dict = None):
     """
     Agrega la tabla vertical de Activities/Timeline con formato mejorado
-    - Header "Activities" en azul
+    - Header "Activities" en azul (traducido según idioma)
     - Lista a., b., c. con nombres cortos de tareas
-    - Header "Timeline" en verde teal
+    - Header "Timeline" en verde teal (traducido según idioma)
     - SIN bordes (los bordes solo van en la tabla Gantt)
     - SIN párrafo vacío después (para que Gantt quede pegado)
     """
+    # Obtener etiquetas traducidas
+    labels = lang_config.get('table_labels', {}) if lang_config else {}
+    activities_label = labels.get('activities', 'Activities')
+    timeline_label = labels.get('timeline', 'Timeline')
+
     num_tasks = len(tasks)
 
     # Crear tabla: 1 header + n tareas (para Activities) + 1 timeline
@@ -525,7 +539,7 @@ def _add_activities_timeline_table_improved(doc: Document, tasks: list, phase: d
 
     # Fila 0: Activities header
     cell = table.cell(0, 0)
-    cell.text = "Activities"
+    cell.text = activities_label
     _set_cell_shading(cell, COLORS['activities_header'])
     for run in cell.paragraphs[0].runs:
         run.font.color.rgb = RGBColor(255, 255, 255)
@@ -544,7 +558,7 @@ def _add_activities_timeline_table_improved(doc: Document, tasks: list, phase: d
     end = phase.get('end_week', phase.get('end_month', ''))
 
     cell = table.cell(num_tasks + 1, 0)
-    cell.text = "Timeline"
+    cell.text = timeline_label
     _set_cell_shading(cell, COLORS['timeline'])
     for run in cell.paragraphs[0].runs:
         run.font.color.rgb = RGBColor(255, 255, 255)
@@ -556,10 +570,10 @@ def _add_activities_timeline_table_improved(doc: Document, tasks: list, phase: d
     # NO añadir párrafo aquí - la tabla Gantt debe quedar pegada
 
 
-def _add_gantt_table_improved(doc: Document, tasks: list, phase: dict):
+def _add_gantt_table_improved(doc: Document, tasks: list, phase: dict, lang_config: dict = None):
     """
     Agrega la tabla Gantt mejorada con:
-    - "Weeks" en itálica como header
+    - "Weeks/Semanas" en itálica como header (traducido según idioma)
     - SIEMPRE 12 columnas: 1 para código de tarea + 11 para semanas
     - El rango de semanas se ajusta para cubrir las tareas de la fase
     - Códigos a., b., c. para las tareas
@@ -567,8 +581,15 @@ def _add_gantt_table_improved(doc: Document, tasks: list, phase: dict):
     - E1, E2... para eventos dentro de la celda amarilla
     - D1, D2... para deliverables dentro de la celda amarilla
     - Bordes negros en todas las celdas
-    - Leyenda al final alineada a la derecha
+    - Leyenda al final alineada a la derecha (traducida según idioma)
     """
+    # Obtener etiquetas traducidas
+    labels = lang_config.get('table_labels', {}) if lang_config else {}
+    weeks_label = labels.get('weeks', 'Weeks')
+    legend_text = labels.get('legend', 'E: Event, D: Deliverable')
+    event_prefix = labels.get('event_prefix', 'E')
+    deliverable_prefix = labels.get('deliverable_prefix', 'D')
+
     NUM_WEEK_COLUMNS = 11  # Siempre 11 columnas de semanas
 
     # Determinar el rango de semanas que necesitamos mostrar
@@ -598,12 +619,12 @@ def _add_gantt_table_improved(doc: Document, tasks: list, phase: dict):
     # Aplicar bordes negros a la tabla
     _set_table_borders(table)
 
-    # Fila header con "Weeks" en itálica
+    # Fila header con "Weeks/Semanas" en itálica
     header_row = table.rows[0]
     weeks_cell = header_row.cells[0]
     weeks_cell.text = ""
     p = weeks_cell.paragraphs[0]
-    run = p.add_run("Weeks")
+    run = p.add_run(weeks_label)
     run.italic = True
 
     # Números de semana (11 columnas)
@@ -611,9 +632,8 @@ def _add_gantt_table_improved(doc: Document, tasks: list, phase: dict):
         week_num = display_start + i
         header_row.cells[i + 1].text = str(week_num)
 
-    # Contador de eventos y deliverables para esta fase
+    # Contador de eventos para esta fase
     event_counter = 0
-    deliverable_counter = 0
 
     # Filas de tareas
     for t_idx, task in enumerate(tasks):
@@ -638,13 +658,17 @@ def _add_gantt_table_improved(doc: Document, tasks: list, phase: dict):
                 event_week = task.get('event_week', task.get('event_month'))
                 if event_week == week:
                     event_counter += 1
-                    cell.text = f"E{event_counter}"
+                    cell.text = f"{event_prefix}{event_counter}"
 
-                # Marcar deliverables en la celda
+                # Marcar deliverables en la celda - usar código explícito si existe
                 deliverable_week = task.get('deliverable_week', task.get('deliverable_month'))
                 if deliverable_week == week:
-                    deliverable_counter += 1
-                    cell.text = f"D{deliverable_counter}"
+                    deliverable_code = task.get('deliverable_code')
+                    if deliverable_code:
+                        cell.text = deliverable_code
+                    else:
+                        # Fallback: usar prefijo genérico (no recomendado)
+                        cell.text = f"{deliverable_prefix}"
 
     # Aplicar formato Aptos 10 e interlineado sencillo a todas las celdas
     _format_all_table_cells(table)
@@ -652,7 +676,7 @@ def _add_gantt_table_improved(doc: Document, tasks: list, phase: dict):
     # Agregar leyenda como párrafo alineado a la derecha
     legend_para = doc.add_paragraph()
     legend_para.alignment = WD_ALIGN_PARAGRAPH.RIGHT
-    run = legend_para.add_run("E: Event, D: Deliverable")
+    run = legend_para.add_run(legend_text)
     run.italic = True
     run.font.size = Pt(9)
 
@@ -697,3 +721,203 @@ def _add_experience_box(doc: Document, text: str):
     cell.text = text
     _set_cell_shading(cell, COLORS['experience_box'])
     doc.add_paragraph()
+
+
+def _add_work_plan(doc: Document, methodology: dict, lang_config: dict):
+    """
+    Agrega una tabla consolidada de Work Plan con todas las actividades,
+    semanas/meses y entregables/eventos marcados en las celdas correspondientes.
+    Si el proyecto tiene mas de 24 semanas, usa meses en lugar de semanas.
+    """
+    phases = methodology.get('phases', [])
+    if not phases:
+        return
+
+    labels = lang_config.get('table_labels', {})
+
+    # Determinar rango de semanas
+    all_weeks = []
+    for phase in phases:
+        all_weeks.append(phase.get('start_week', 1))
+        all_weeks.append(phase.get('end_week', 1))
+        for task in phase.get('tasks', []):
+            all_weeks.append(task.get('start_week', 1))
+            all_weeks.append(task.get('end_week', 1))
+
+    min_week = min(all_weeks) if all_weeks else 1
+    max_week = max(all_weeks) if all_weeks else 12
+    num_weeks = max_week - min_week + 1
+
+    # Si hay mas de 24 semanas, convertir a meses
+    use_months = num_weeks > 24
+    if use_months:
+        # Convertir semanas a meses (4 semanas = 1 mes aproximadamente)
+        min_month = (min_week - 1) // 4 + 1
+        max_month = (max_week - 1) // 4 + 1
+        num_periods = max_month - min_month + 1
+        period_label = labels.get('months', 'M')
+    else:
+        num_periods = num_weeks
+        period_label = labels.get('weeks', 'W')
+
+    # Contar total de filas: titulo + header semanas + (fase + tareas) por cada fase
+    total_rows = 2  # Titulo WORK PLAN + header con numeros de semana/mes
+    for phase in phases:
+        total_rows += 1  # Fila de fase
+        total_rows += len(phase.get('tasks', []))  # Filas de tareas
+
+    # Columnas: Codigo + Actividad + periodos (semanas o meses)
+    num_cols = 2 + num_periods
+
+    table = doc.add_table(rows=total_rows, cols=num_cols)
+    table.alignment = WD_TABLE_ALIGNMENT.CENTER
+    _set_table_borders(table)
+
+    # === Fila 0: Titulo "WORK PLAN" que abarca todas las columnas ===
+    # Merge todas las celdas de la primera fila
+    first_cell = table.cell(0, 0)
+    last_cell = table.cell(0, num_cols - 1)
+    first_cell.merge(last_cell)
+    first_cell.text = "WORK PLAN"
+    _set_cell_shading(first_cell, COLORS['activities_header'])
+    for para in first_cell.paragraphs:
+        para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        for run in para.runs:
+            run.font.bold = True
+            run.font.color.rgb = RGBColor(255, 255, 255)
+            run.font.size = Pt(12)
+
+    # === Fila 1: Headers (vacio, vacio, periodo 1, periodo 2, ...) ===
+    header_row = table.rows[1]
+    header_row.cells[0].text = ""
+    header_row.cells[1].text = ""
+    for i in range(num_periods):
+        if use_months:
+            period_num = min_month + i
+        else:
+            period_num = min_week + i
+        cell = header_row.cells[2 + i]
+        cell.text = str(period_num)
+        for para in cell.paragraphs:
+            para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+
+    # === Filas de fases y tareas ===
+    current_row = 2
+
+    for phase in phases:
+        phase_title = phase.get('title', '')
+
+        # Fila de fase (merge codigo + actividad)
+        phase_code_cell = table.cell(current_row, 0)
+        phase_name_cell = table.cell(current_row, 1)
+        phase_code_cell.merge(phase_name_cell)
+        phase_code_cell.text = phase_title
+        _set_cell_shading(phase_code_cell, COLORS['timeline'])
+        for para in phase_code_cell.paragraphs:
+            for run in para.runs:
+                run.font.bold = True
+                run.font.color.rgb = RGBColor(255, 255, 255)
+
+        # Colorear celdas de periodos para la fase
+        phase_start = phase.get('start_week', min_week)
+        phase_end = phase.get('end_week', phase_start)
+
+        if use_months:
+            phase_start_period = (phase_start - 1) // 4 + 1
+            phase_end_period = (phase_end - 1) // 4 + 1
+            for period in range(phase_start_period, phase_end_period + 1):
+                col_idx = 2 + (period - min_month)
+                if 0 <= col_idx - 2 < num_periods:
+                    cell = table.cell(current_row, col_idx)
+                    _set_cell_shading(cell, COLORS['timeline'])
+        else:
+            for week in range(phase_start, phase_end + 1):
+                col_idx = 2 + (week - min_week)
+                if 0 <= col_idx - 2 < num_periods:
+                    cell = table.cell(current_row, col_idx)
+                    _set_cell_shading(cell, COLORS['timeline'])
+
+        current_row += 1
+
+        # Filas de tareas
+        for task in phase.get('tasks', []):
+            task_code = task.get('code', '')
+            task_title = task.get('title', '')
+
+            # Codigo de tarea
+            table.cell(current_row, 0).text = task_code
+            # Titulo de tarea
+            table.cell(current_row, 1).text = task_title
+
+            # Colorear celdas activas y marcar deliverables
+            task_start = task.get('start_week', min_week)
+            task_end = task.get('end_week', task_start)
+            deliverable_week = task.get('deliverable_week')
+
+            if use_months:
+                task_start_period = (task_start - 1) // 4 + 1
+                task_end_period = (task_end - 1) // 4 + 1
+                deliverable_period = (deliverable_week - 1) // 4 + 1 if deliverable_week else None
+
+                for period in range(task_start_period, task_end_period + 1):
+                    col_idx = 2 + (period - min_month)
+                    if 0 <= col_idx - 2 < num_periods:
+                        cell = table.cell(current_row, col_idx)
+                        _set_cell_shading(cell, COLORS['gantt_active'])
+
+                        # Marcar deliverable si corresponde
+                        if deliverable_period == period:
+                            deliverable_code = task.get('deliverable_code', '')
+                            if deliverable_code:
+                                cell.text = deliverable_code
+                                for para in cell.paragraphs:
+                                    para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                                    for run in para.runs:
+                                        run.font.bold = True
+            else:
+                for week in range(task_start, task_end + 1):
+                    col_idx = 2 + (week - min_week)
+                    if 0 <= col_idx - 2 < num_periods:
+                        cell = table.cell(current_row, col_idx)
+                        _set_cell_shading(cell, COLORS['gantt_active'])
+
+                        # Marcar deliverable si corresponde
+                        if deliverable_week == week:
+                            deliverable_code = task.get('deliverable_code', '')
+                            if deliverable_code:
+                                cell.text = deliverable_code
+                                for para in cell.paragraphs:
+                                    para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                                    for run in para.runs:
+                                        run.font.bold = True
+
+                        # Marcar evento si corresponde
+                        event_week = task.get('event_week')
+                        if event_week == week:
+                            event_code = task.get('event_code', 'E')
+                            cell.text = event_code
+                            for para in cell.paragraphs:
+                                para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                                for run in para.runs:
+                                    run.font.bold = True
+
+            current_row += 1
+
+    # Aplicar formato a todas las celdas
+    _format_all_table_cells(table, font_size=9)
+
+    # Ajustar ancho de columnas
+    # Columna codigo: estrecha, columna actividad: mas ancha, periodos: estrechas
+    for row in table.rows:
+        row.cells[0].width = Cm(1.2)
+        row.cells[1].width = Cm(6)
+        for i in range(2, num_cols):
+            row.cells[i].width = Cm(0.8 if use_months else 1.0)
+
+    # Leyenda
+    legend_text = labels.get('legend', 'E: Event, P: Product')
+    legend_para = doc.add_paragraph()
+    legend_para.alignment = WD_ALIGN_PARAGRAPH.RIGHT
+    run = legend_para.add_run(legend_text)
+    run.italic = True
+    run.font.size = Pt(9)
